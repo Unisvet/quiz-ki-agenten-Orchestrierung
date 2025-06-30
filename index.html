@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz: KI-Agenten-Orchestrierung</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles to use the Inter font */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom transition for smooth feedback */
+        .btn-answer {
+            transition: background-color 0.3s, border-color 0.3s, transform 0.1s;
+        }
+        .btn-answer:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex items-center justify-center min-h-screen p-4">
+
+    <!-- Quiz Container -->
+    <div id="quiz-container" class="w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
+        
+        <!-- Start Screen -->
+        <div id="start-screen">
+            <h1 class="text-3xl md:text-4xl font-bold text-center text-gray-900 dark:text-white mb-4">Quiz: KI-Agenten-Orchestrierung</h1>
+            <p class="text-center text-gray-600 dark:text-gray-300 mb-8">Testen Sie Ihr Wissen über die faszinierende Welt der KI-Agenten. 10 Fragen warten auf Sie.</p>
+            <button id="start-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-300 ease-in-out transform hover:scale-105">
+                Quiz starten
+            </button>
+        </div>
+
+        <!-- Quiz Screen (hidden by default) -->
+        <div id="quiz-screen" class="hidden">
+            <!-- Header with progress -->
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-indigo-600 dark:text-indigo-400">Frage <span id="question-number"></span>/10</h2>
+                <div class="text-lg font-semibold">Score: <span id="score">0</span></div>
+            </div>
+            
+            <!-- Question -->
+            <p id="question-text" class="text-xl md:text-2xl font-semibold mb-6 min-h-[100px]"></p>
+            
+            <!-- Answer Options -->
+            <div id="answer-options" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <!-- Buttons will be inserted here by JavaScript -->
+            </div>
+            
+            <!-- Rationale/Feedback Box -->
+            <div id="rationale-box" class="hidden mt-6 p-4 rounded-lg bg-gray-100 dark:bg-gray-700">
+                <p id="rationale-text" class="text-gray-700 dark:text-gray-200"></p>
+            </div>
+
+            <!-- Next Button -->
+            <button id="next-btn" class="hidden w-full mt-6 bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-300">
+                Nächste Frage
+            </button>
+        </div>
+
+        <!-- End Screen (hidden by default) -->
+        <div id="end-screen" class="hidden text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">Quiz beendet!</h1>
+            <p class="text-xl text-gray-600 dark:text-gray-300 mb-2">Ihr Endergebnis:</p>
+            <p id="final-score" class="text-6xl font-bold text-indigo-600 dark:text-indigo-400 mb-8"></p>
+            <p id="final-message" class="text-lg mb-8"></p>
+            <button id="restart-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-300 ease-in-out transform hover:scale-105">
+                Erneut versuchen
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- Quiz Data ---
+        // The questions and answers are stored in this array of objects.
+        const quizData = [
+            {
+              "question": "Was ist der grundlegende Unterschied zwischen einem modernen KI-Agenten und einem traditionellen RPA-Bot?",
+              "hint": "Denken Sie darüber nach, wie jeder von ihnen eine Aufgabe angeht: Folgt er einer festen Anleitung oder versucht er, ein bestimmtes Ergebnis zu erreichen?",
+              "answerOptions": [
+                {
+                  "text": "KI-Agenten sind zielorientiert, während RPA-Bots prozessorientiert sind.",
+                  "rationale": "KI-Agenten erhalten ein Ziel und entwickeln dynamisch einen Plan, um dieses zu erreichen, während RPA-Bots einer vordefinierten, starren Abfolge von Schritten folgen.",
+                  "isCorrect": true
+                },
+                {
+                  "text": "KI-Agenten können nur in der Cloud laufen, RPA-Bots nur auf lokalen Desktops.",
+                  "rationale": "Beide Technologien können in verschiedenen Umgebungen eingesetzt werden; der Einsatzort ist kein grundlegendes Unterscheidungsmerkmal.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "RPA-Bots nutzen maschinelles Lernen, KI-Agenten nicht.",
+                  "rationale": "Dies verkehrt die Tatsachen; die Lernfähigkeit ist eine Kernkompetenz von KI-Agenten, während traditionelle RPA-Bots regelbasiert sind.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "KI-Agenten können keine Aktionen ausführen, sie können nur denken.",
+                  "rationale": "Die Fähigkeit zur Handlung durch \"Aktuatoren\" ist eine wesentliche Komponente eines KI-Agenten, um seine Ziele zu erreichen.",
+                  "isCorrect": false
+                }
+              ]
+            },
+            {
+              "question": "Ein Unternehmen plant ein großes Multi-Agenten-System mit Tausenden von Agenten. Was ist die größte Schwäche einer rein zentralisierten Architektur für dieses Vorhaben?",
+              "hint": "Was passiert in einem Orchester, wenn der Dirigent plötzlich ausfällt?",
+              "answerOptions": [
+                {
+                  "text": "Der zentrale Orchestrator kann zu einem Leistungsengpass und einem \"Single Point of Failure\" werden.",
+                  "rationale": "Die gesamte Kommunikation und Steuerung läuft über einen einzigen Punkt, dessen Ausfall das gesamte System lahmlegt und dessen Kapazität die Skalierbarkeit begrenzt.",
+                  "isCorrect": true
+                },
+                {
+                  "text": "Die Kommunikation zwischen den Agenten ist zu komplex zu verwalten.",
+                  "rationale": "In einer zentralisierten Architektur ist die Kommunikation tatsächlich einfacher zu verwalten, da sie nicht direkt von Agent zu Agent erfolgt, sondern über die zentrale Instanz.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "Es ist unmöglich, neue Agenten hinzuzufügen, sobald das System läuft.",
+                  "rationale": "Obwohl es eine gewisse Planung erfordert, können in zentralisierten Systemen durchaus neue Agenten hinzugefügt werden; es ist keine grundsätzliche Unmöglichkeit.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "Dezentrale Architekturen sind immer günstiger im Betrieb.",
+                  "rationale": "Die Kosten hängen von vielen Faktoren ab, und eine einfache Aussage über die Betriebskosten lässt sich nicht treffen; die Komplexität der dezentralen Koordination kann ebenfalls Kosten verursachen.",
+                  "isCorrect": false
+                }
+              ]
+            },
+            {
+              "question": "Wie ist die Beziehung zwischen dem Agent-to-Agent (A2A) Protokoll und dem Model Context Protocol (MCP) zu beschreiben?",
+              "hint": "Denken Sie an die Analogie der Autowerkstatt: Eines ist für die Kommunikation mit Kollegen, das andere für die Benutzung von Werkzeugen.",
+              "answerOptions": [
+                {
+                  "text": "Sie sind komplementär: A2A regelt die Kommunikation zwischen Agenten, MCP die zwischen Agenten und Tools.",
+                  "rationale": "A2A ermöglicht die horizontale Kollaboration (Teamwork), während MCP die vertikale Integration mit externen Funktionalitäten (Werkzeugen) standardisiert.",
+                  "isCorrect": true
+                },
+                {
+                  "text": "Sie sind konkurrierende Standards für denselben Anwendungsfall.",
+                  "rationale": "Sie adressieren unterschiedliche, aber gleichermaßen wichtige Aspekte des Agenten-Ökosystems und sind nicht als direkte Konkurrenten konzipiert.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "A2A ist der Nachfolger von MCP und ersetzt es vollständig.",
+                  "rationale": "Beide Protokolle werden parallel für ihre spezifischen Zwecke entwickelt und sind nicht als evolutionäre Nachfolger voneinander gedacht.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "MCP ist nur für Microsoft-Frameworks, A2A nur für Google-Frameworks relevant.",
+                  "rationale": "Beide sind als offene, herstellerneutrale Standards konzipiert, um eine breite Interoperabilität im gesamten Ökosystem zu fördern.",
+                  "isCorrect": false
+                }
+              ]
+            },
+            {
+              "question": "Was war der Hauptgrund, warum frühe Agenten-Kommunikationssprachen wie FIPA-ACL in der Industrie nur begrenzte Verbreitung fanden?",
+              "hint": "Welche Hürde mussten zwei Agenten von unterschiedlichen Entwicklern überwinden, um die Bedeutung der Nachrichten des anderen zu verstehen?",
+              "answerOptions": [
+                {
+                  "text": "Die starke Abhängigkeit von einer gemeinsamen, formalen und rigiden Ontologie.",
+                  "rationale": "Die Notwendigkeit, sich auf eine exakte, oft mühsam zu erstellende semantische Definition (Ontologie) zu einigen, stand der dynamischen Natur realer IT-Umgebungen im Wege.",
+                  "isCorrect": true
+                },
+                {
+                  "text": "Sie basierten nicht auf der Sprechakttheorie.",
+                  "rationale": "Das Gegenteil ist der Fall; die Sprechakttheorie mit ihren Performativen war das theoretische Fundament dieser Protokolle.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "Es mangelte an theoretischer Fundierung in der akademischen Forschung.",
+                  "rationale": "Diese Protokolle waren tief in der akademischen Forschung verankert und dort auch weit verbreitet.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "Sie waren zu einfach und konnten keine komplexen Intentionen ausdrücken.",
+                  "rationale": "Ihre Stärke lag gerade in der Fähigkeit, durch Performative komplexe Intentionen wie `request` oder `propose` auszudrücken, was sie jedoch auch komplex in der Anwendung machte.",
+                  "isCorrect": false
+                }
+              ]
+            },
+            {
+              "question": "Für welches der folgenden Szenarien wäre ein Multi-Agenten-System mit einer dezentralen Architektur und emergentem Verhalten am besten geeignet?",
+              "hint": "Welche Aufgabe profitiert am meisten von Robustheit und der Fähigkeit, auf unvorhergesehene Ereignisse flexibel zu reagieren, ohne auf eine zentrale Steuerung angewiesen zu sein?",
+              "answerOptions": [
+                {
+                  "text": "Optimierung der Routenplanung für eine große Flotte von Lieferfahrzeugen in Echtzeit.",
+                  "rationale": "In diesem Szenario ermöglicht die direkte Kommunikation zwischen Fahrzeug-Agenten eine schnelle, dezentrale Anpassung an lokale Störungen und erhöht die Robustheit des Gesamtsystems.",
+                  "isCorrect": true
+                },
+                {
+                  "text": "Automatisierung der Gehaltsabrechnung in einem Unternehmen mit festen Regeln.",
+                  "rationale": "Dies ist ein hochgradig strukturierter Prozess, der sich besser für eine kontrollierte, zentralisierte oder lineare Workflow-Automatisierung eignet.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "Genehmigung eines Kreditantrags nach einem strikt vordefinierten Prüfverfahren.",
+                  "rationale": "Compliance-kritische Prozesse erfordern eine hohe Nachvollziehbarkeit, die durch zentralisierte Architekturen besser gewährleistet wird.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "Ausführung eines einzelnen, klar definierten Skripts zur Datenmigration.",
+                  "rationale": "Dies ist eine Aufgabe für ein einzelnes Werkzeug oder einen einzelnen Agenten und erfordert kein Multi-Agenten-System.",
+                  "isCorrect": false
+                }
+              ]
+            },
+            {
+              "question": "Ein Team möchte einen Workflow für Marketing-Content automatisieren. Der Prozess ist klar definiert (Recherche, Texterstellung, Veröffentlichung) und soll einem menschlichen Team ähneln. Welches Framework wäre die beste Wahl?",
+              "hint": "Welches Framework ist explizit dafür konzipiert, Agenten Rollen wie \"Senior Researcher\" zuzuweisen und sie in einer \"Crew\" zusammenarbeiten zu lassen?",
+              "answerOptions": [
+                {
+                  "text": "CrewAI",
+                  "rationale": "CrewAI ist speziell auf einen intuitiven, rollenbasierten Ansatz ausgelegt, der gut zu klar definierten, prozessorientierten Workflows passt.",
+                  "isCorrect": true
+                },
+                {
+                  "text": "AutoGen",
+                  "rationale": "AutoGen ist stärker auf flexible, konversationsgetriebene Interaktionen ausgerichtet und wäre für einen so klar definierten Prozess möglicherweise überdimensioniert.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "LangGraph",
+                  "rationale": "LangGraph ist ideal für komplexere, potenziell zyklische Workflows, was für diesen eher linearen Prozess nicht zwingend notwendig ist.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "n8n",
+                  "rationale": "n8n ist eine Low-Code-Plattform, die zwar für Workflows geeignet ist, aber nicht den spezifischen rollenbasierten Programmieransatz für KI-Agenten wie CrewAI bietet.",
+                  "isCorrect": false
+                }
+              ]
+            },
+            {
+              "question": "Ein Finanzinstitut muss einen komplexen Prozess zur Betrugserkennung mit Schleifen und bedingten Verzweigungen implementieren, der maximale Kontrolle und Nachvollziehbarkeit erfordert. Welches Framework ist dafür am besten geeignet?",
+              "hint": "Welches Framework repräsentiert Workflows als Graphen, bei denen jeder Knoten und jede Kante den genauen Kontrollfluss und Zustand definiert?",
+              "answerOptions": [
+                {
+                  "text": "LangGraph",
+                  "rationale": "LangGraph wurde entwickelt, um zustandsbehaftete, zyklische Agenten-Workflows als Graphen zu modellieren, was die für solch komplexe Anwendungen erforderliche granulare Kontrolle bietet.",
+                  "isCorrect": true
+                },
+                {
+                  "text": "CrewAI",
+                  "rationale": "CrewAI's rollenbasierter Ansatz ist weniger flexibel für komplexe, zyklische Abhängigkeiten und explizites Zustandsmanagement.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "AutoGen",
+                  "rationale": "AutoGen's konversationsgetriebener Ansatz bietet weniger explizite Kontrolle über den Workflow, was in einem hochregulierten Umfeld ein Nachteil sein kann.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "FIPA-ACL",
+                  "rationale": "FIPA-ACL ist ein Kommunikationsprotokoll, kein Entwicklungsframework zur Steuerung von Workflows.",
+                  "isCorrect": false
+                }
+              ]
+            },
+            {
+              "question": "Welchen Zweck erfüllt der \"Observation\"-Schritt im ReAct-Zyklus eines KI-Agenten?",
+              "hint": "Nachdem der Agent eine Handlung ausgeführt hat, was muss er tun, bevor er seinen nächsten Schritt plant?",
+              "answerOptions": [
+                {
+                  "text": "Er wertet das Ergebnis seiner letzten Aktion aus, um seinen nächsten Schritt zu planen.",
+                  "rationale": "Die Beobachtung des Handlungsergebnisses liefert neue Informationen, die für die nächste \"Thought\"-Phase entscheidend sind und eine dynamische Plananpassung ermöglichen.",
+                  "isCorrect": true
+                },
+                {
+                  "text": "Er bittet den menschlichen Nutzer um eine Bestätigung der Aktion.",
+                  "rationale": "Obwohl eine menschliche Interaktion möglich ist, ist die Beobachtung im Kern die eigenständige Auswertung des Ergebnisses durch den Agenten selbst.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "Er führt die eigentliche Aktion in der Umgebung aus.",
+                  "rationale": "Dies ist der \"Action\"-Schritt; der \"Observation\"-Schritt folgt darauf.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "Er speichert den gesamten Plan im Langzeitspeicher ab.",
+                  "rationale": "Das Speichern kann Teil des Prozesses sein, aber der primäre Zweck der Beobachtung ist die Auswertung des unmittelbaren Ergebnisses für den nächsten Zyklusschritt.",
+                  "isCorrect": false
+                }
+              ]
+            },
+            {
+              "question": "Was stellt eine der größten *technischen* Herausforderungen beim Debugging von Multi-Agenten-Systemen dar?",
+              "hint": "Warum versagen traditionelle Debugging-Methoden, die einen Code Zeile für Zeile durchgehen, bei einem Team von Agenten?",
+              "answerOptions": [
+                {
+                  "text": "Das nicht-deterministische und emergente Verhalten des Systems macht Fehler schwer reproduzierbar.",
+                  "rationale": "Das Zusammenspiel vieler autonomer Agenten kann zu unerwarteten Ergebnissen führen, die nicht bei jedem Durchlauf gleich sind, was die Fehlersuche erschwert.",
+                  "isCorrect": true
+                },
+                {
+                  "text": "Der Mangel an qualifizierten Programmierern für KI.",
+                  "rationale": "Dies ist eine allgemeine Herausforderung im Personalbereich, aber keine spezifische technische Schwierigkeit beim Debugging von MAS.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "Die hohen Kosten für die benötigte Rechenleistung.",
+                  "rationale": "Obwohl die Rechenleistung kostspielig sein kann, ist dies eher eine betriebliche Herausforderung als ein grundlegendes Debugging-Problem.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "Die Notwendigkeit, für jeden Agenten eine formale Ontologie zu definieren.",
+                  "rationale": "Dies war eine Herausforderung bei alten Protokollen wie FIPA-ACL, ist aber bei modernen Frameworks nicht mehr die primäre Hürde.",
+                  "isCorrect": false
+                }
+              ]
+            },
+            {
+              "question": "Welche der folgenden Aufgaben gehört *nicht* zu den Kernaufgaben eines Orchestrators in einem Multi-Agenten-System?",
+              "hint": "Der Orchestrator ist der Dirigent des Agenten-Teams. Welche Aufgabe liegt typischerweise bei den spezialisierten Musikern selbst?",
+              "answerOptions": [
+                {
+                  "text": "Die detaillierte, interne Implementierung der Lösung für eine spezifische Teilaufgabe.",
+                  "rationale": "Der Orchestrator zerlegt und verteilt die Aufgaben, aber die eigentliche fachliche Lösung wird vom spezialisierten \"Expert Agent\" selbst erarbeitet.",
+                  "isCorrect": true
+                },
+                {
+                  "text": "Die Zerlegung einer komplexen Anfrage in kleinere, logische Teilaufgaben.",
+                  "rationale": "Die Aufgabenzerlegung (Task Decomposition) ist eine der zentralen Funktionen des Orchestrators.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "Die Auswahl des am besten geeigneten Agenten für jede Teilaufgabe.",
+                  "rationale": "Agentenauswahl und Routing sind eine Kernkompetenz, um die Effizienz des Systems sicherzustellen.",
+                  "isCorrect": false
+                },
+                {
+                  "text": "Die Überwachung des Fortschritts der Aufgaben und die Fehlerbehandlung.",
+                  "rationale": "Monitoring und Fehlerbehandlung sind entscheidend, damit der Orchestrator den Gesamtprozess steuern und bei Problemen eingreifen kann.",
+                  "isCorrect": false
+                }
+              ]
+            }
+        ];
+
+        // --- DOM Elements ---
+        // Getting references to all the HTML elements we'll need to interact with.
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const endScreen = document.getElementById('end-screen');
+        
+        const startBtn = document.getElementById('start-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        
+        const questionNumberEl = document.getElementById('question-number');
+        const scoreEl = document.getElementById('score');
+        const questionTextEl = document.getElementById('question-text');
+        const answerOptionsEl = document.getElementById('answer-options');
+        const rationaleBoxEl = document.getElementById('rationale-box');
+        const rationaleTextEl = document.getElementById('rationale-text');
+        
+        const finalScoreEl = document.getElementById('final-score');
+        const finalMessageEl = document.getElementById('final-message');
+
+        // --- State Variables ---
+        // Variables to keep track of the quiz's current state.
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let shuffledQuestions = [];
+
+        // --- Functions ---
+
+        /**
+         * Shuffles an array in place using the Fisher-Yates algorithm.
+         * @param {Array} array The array to shuffle.
+         */
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        /**
+         * Starts the quiz: resets state, shuffles questions, and shows the first question.
+         */
+        function startQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            shuffledQuestions = [...quizData];
+            shuffleArray(shuffledQuestions); // Shuffle the order of questions
+            
+            startScreen.classList.add('hidden');
+            endScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            
+            scoreEl.textContent = score;
+            showQuestion();
+        }
+
+        /**
+         * Displays the current question and its shuffled answer options.
+         */
+        function showQuestion() {
+            // Reset UI elements for the new question
+            rationaleBoxEl.classList.add('hidden');
+            nextBtn.classList.add('hidden');
+            answerOptionsEl.innerHTML = ''; // Clear previous options
+
+            // Get the current question
+            const currentQuestion = shuffledQuestions[currentQuestionIndex];
+            
+            // Update UI with question details
+            questionTextEl.textContent = currentQuestion.question;
+            questionNumberEl.textContent = currentQuestionIndex + 1;
+
+            // Shuffle answer options for display
+            const shuffledOptions = [...currentQuestion.answerOptions];
+            shuffleArray(shuffledOptions);
+
+            // Create and append a button for each answer option
+            shuffledOptions.forEach(option => {
+                const button = document.createElement('button');
+                button.innerHTML = option.text;
+                button.classList.add('btn-answer', 'w-full', 'p-4', 'text-left', 'rounded-lg', 'border-2', 'border-gray-300', 'dark:border-gray-600', 'bg-white', 'dark:bg-gray-800', 'hover:bg-gray-100', 'dark:hover:bg-gray-700');
+                button.dataset.correct = option.isCorrect;
+                button.dataset.rationale = option.rationale;
+                button.addEventListener('click', selectAnswer);
+                answerOptionsEl.appendChild(button);
+            });
+        }
+
+        /**
+         * Handles the user's answer selection.
+         * Provides visual feedback, updates the score, and shows the rationale.
+         * @param {Event} e The click event from the answer button.
+         */
+        function selectAnswer(e) {
+            const selectedBtn = e.target;
+            const isCorrect = selectedBtn.dataset.correct === 'true';
+            
+            // Update score if correct
+            if (isCorrect) {
+                score++;
+                scoreEl.textContent = score;
+            }
+
+            // Provide visual feedback on all buttons
+            Array.from(answerOptionsEl.children).forEach(button => {
+                button.disabled = true; // Disable all buttons after an answer is chosen
+                if (button.dataset.correct === 'true') {
+                    // Correct answer style
+                    button.classList.remove('border-gray-300', 'dark:border-gray-600', 'hover:bg-gray-100', 'dark:hover:bg-gray-700');
+                    button.classList.add('bg-green-100', 'dark:bg-green-900', 'border-green-500', 'dark:border-green-400', 'text-green-800', 'dark:text-white', 'font-semibold');
+                } else if (button === selectedBtn) {
+                     // Incorrect selected answer style
+                    button.classList.remove('border-gray-300', 'dark:border-gray-600', 'hover:bg-gray-100', 'dark:hover:bg-gray-700');
+                    button.classList.add('bg-red-100', 'dark:bg-red-900', 'border-red-500', 'dark:border-red-400', 'text-red-800', 'dark:text-white', 'font-semibold');
+                }
+            });
+
+            // Show rationale and the 'Next' button
+            rationaleTextEl.textContent = selectedBtn.dataset.rationale;
+            rationaleBoxEl.classList.remove('hidden');
+            nextBtn.classList.remove('hidden');
+        }
+        
+        /**
+         * Moves to the next question or ends the quiz if all questions are answered.
+         */
+        function handleNextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < shuffledQuestions.length) {
+                showQuestion();
+            } else {
+                endQuiz();
+            }
+        }
+
+        /**
+         * Displays the final score and a message.
+         */
+        function endQuiz() {
+            quizScreen.classList.add('hidden');
+            endScreen.classList.remove('hidden');
+            
+            const percentage = Math.round((score / shuffledQuestions.length) * 100);
+            finalScoreEl.textContent = `${percentage}%`;
+            
+            let message = '';
+            if (percentage === 100) {
+                message = 'Hervorragend! Sie sind ein wahrer Experte für KI-Agenten!';
+            } else if (percentage >= 80) {
+                message = 'Sehr gut gemacht! Sie haben ein solides Wissen.';
+            } else if (percentage >= 50) {
+                message = 'Gut gemacht! Es gibt noch Raum für Verbesserungen.';
+            } else {
+                message = 'Keine Sorge, jeder fängt mal an. Versuchen Sie es noch einmal!';
+            }
+            finalMessageEl.textContent = message;
+        }
+
+        // --- Event Listeners ---
+        // Assigning functions to button clicks.
+        startBtn.addEventListener('click', startQuiz);
+        nextBtn.addEventListener('click', handleNextQuestion);
+        restartBtn.addEventListener('click', startQuiz);
+
+    </script>
+</body>
+</html>
